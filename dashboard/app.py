@@ -1,7 +1,9 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import time
+from datetime import datetime
 
 # =============================================================================
 # VIDYUTSAHAY: INDUSTRIAL SCADA & EDGE-FLEXIBILITY ORCHESTRATION CONSOLE
@@ -37,7 +39,7 @@ st.markdown("""
         border-left: 6px solid #3DCD58;
         padding: 1.1rem 1.6rem;
         border-radius: 6px;
-        margin-bottom: 1.2rem;
+        margin-bottom: 0.8rem;
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
         display: flex;
         justify-content: space-between;
@@ -105,58 +107,6 @@ st.markdown("""
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
 
-    /* Industrial Gauge / KPI Cards */
-    .kpi-container {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 0.75rem;
-        margin-bottom: 1.2rem;
-    }
-    .scada-kpi {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
-        padding: 0.85rem 1rem;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.4);
-        position: relative;
-        overflow: hidden;
-    }
-    .scada-kpi::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 3px;
-        height: 100%;
-        background: #3DCD58;
-    }
-    .scada-kpi.warn::before { background: #f59e0b; }
-    .scada-kpi.danger::before { background: #ef4444; }
-    .scada-kpi.info::before { background: #0ea5e9; }
-    
-    .kpi-title {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    .kpi-num {
-        font-size: 1.55rem;
-        font-weight: 800;
-        color: #f8fafc;
-        font-family: 'JetBrains Mono', monospace;
-        margin: 0.2rem 0;
-    }
-    .kpi-meta {
-        font-size: 0.72rem;
-        color: #94a3b8;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
     /* Annunciator Alarm Board */
     .annunciator-grid {
         display: grid;
@@ -208,16 +158,6 @@ st.markdown("""
     }
     @keyframes blinker {
         50% { opacity: 0.35; }
-    }
-
-    /* SLD Mimic Diagram Wrapper */
-    .sld-panel {
-        background: #0b1329;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
-        padding: 1rem;
-        margin-bottom: 1.2rem;
-        box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -333,9 +273,138 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
+# 4B. LIVE SUBSTATION MASTER CLOCK BAR (GPS / IRIG-B & DISPATCH TIMELINE)
+# -----------------------------------------------------------------------------
+clock_html = """
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Inter:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: transparent; font-family: 'JetBrains Mono', monospace; }
+  .clock-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    background: #091224;
+    border: 1px solid #1e3a5f;
+    border-radius: 6px;
+    padding: 8px 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    align-items: center;
+  }
+  .clock-pane {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .pane-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    display: inline-block;
+  }
+  .clock-digits {
+    font-size: 22px;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+  .clock-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 1px;
+  }
+  .badge-sync {
+    background: #0c4a6e;
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+<div class="clock-bar">
+  <!-- Pane 1: GPS Master Clock -->
+  <div class="clock-pane">
+    <div class="pane-title">
+      <span class="pulse-dot"></span>
+      <span>SUBSTATION MASTER CLOCK (IRIG-B)</span>
+      <span class="badge-sync">GPS LOCKED</span>
+    </div>
+    <div id="live-time" class="clock-digits">--:--:-- <span style="font-size:12px; color:#4ade80;">IST</span></div>
+    <div id="live-date" class="clock-sub">-- --- ---- | IEEE 1588 PTP SYNCED</div>
+  </div>
+  
+  <!-- Pane 2: High-Precision Millisecond Timecode -->
+  <div class="clock-pane" style="text-align: center; border-left: 1px solid #1e293b; border-right: 1px solid #1e293b; padding: 0 10px;">
+    <div class="pane-title" style="justify-content: center;">
+      <span>SUBSTATION SOE RECORDER CLOCK</span>
+    </div>
+    <div id="live-millis" class="clock-digits" style="color: #4ade80; font-size: 20px;">--:--:--.---</div>
+    <div class="clock-sub">PRECISION: &plusmn;1&mu;s | SYNCHRONIZED ACQUISITION</div>
+  </div>
+
+  <!-- Pane 3: System Uptime & Communication Heartbeat -->
+  <div class="clock-pane" style="text-align: right;">
+    <div class="pane-title" style="justify-content: flex-end;">
+      <span>GRID DISPATCH TIMEBASE</span>
+      <span class="badge-sync" style="background:#064e3b; color:#4ade80; border-color:#22c55e;">ONLINE</span>
+    </div>
+    <div class="clock-digits" style="color: #f8fafc; font-size: 19px;">50.00 Hz <span style="font-size:12px; color:#38bdf8;">GRID-LOCKED</span></div>
+    <div class="clock-sub">MODBUS-RTU / TCP | 50&mu;s EDGE LOOP</div>
+  </div>
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = months[now.getMonth()];
+  const year = now.getFullYear();
+  
+  document.getElementById('live-time').innerHTML = h + ':' + m + ':' + s + ' <span style="font-size:12px; color:#4ade80;">IST</span>';
+  document.getElementById('live-date').textContent = day + '-' + month + '-' + year + ' | IEEE 1588 PTP SYNCED';
+  document.getElementById('live-millis').textContent = h + ':' + m + ':' + s + '.' + ms;
+}
+setInterval(updateClock, 50);
+updateClock();
+</script>
+</body>
+</html>
+"""
+
+components.html(clock_html, height=76)
+st.markdown("<div style='margin-bottom: 0.8rem;'></div>", unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
 # 5. DYNAMIC SINGLE-LINE DIAGRAM (SLD MIMIC) GENERATOR
 # -----------------------------------------------------------------------------
-def generate_sld_svg(load_a, soc_pct, sw1_state, solar_kw, bus_v, p_kva):
+def generate_sld_svg(load_a, soc_pct, sw1_state, solar_kw, bus_v, p_kva, sim_t):
     sw1_is_tripped = (sw1_state >= 0.5)
     
     # Dynamic styles
@@ -350,6 +419,11 @@ def generate_sld_svg(load_a, soc_pct, sw1_state, solar_kw, bus_v, p_kva):
     # Battery state
     bess_flow_color = "#3DCD58" if soc_pct > 20 else "#f59e0b"
     bess_mode = "CHARGING (SOLAR)" if (solar_kw > 60 and soc_pct < 98) else ("DISCHARGING (PEAK)" if load_a > 50 else "STANDBY")
+
+    # Time of day calculation
+    s_hr = int(sim_t)
+    s_min = int((sim_t % 1) * 60)
+    sim_clk_str = f"{s_hr:02d}:{s_min:02d}:00"
 
     svg = f"""
     <svg viewBox="0 0 960 260" width="100%" height="260" xmlns="http://www.w3.org/2000/svg" style="background:#090f1d; border-radius:6px; font-family:'JetBrains Mono',monospace;">
@@ -394,7 +468,7 @@ def generate_sld_svg(load_a, soc_pct, sw1_state, solar_kw, bus_v, p_kva):
         <!-- 2. MAIN 415V BUSBAR (Cyan High-Current Trunk) -->
         <line x1="340" y1="30" x2="340" y2="230" stroke="#06b6d4" stroke-width="6" stroke-linecap="round"/>
         <text x="330" y="24" fill="#06b6d4" font-size="11" font-weight="800" text-anchor="end">415V AC BUSBAR (0.415 kV)</text>
-        <text x="330" y="38" fill="#4ade80" font-size="9" text-anchor="end">V_LN: {bus_v:.1f} V (CEA COMPLIANT)</text>
+        <text x="330" y="38" fill="#4ade80" font-size="9" text-anchor="end">V_LN: {bus_v:.1f} V | DISPATCH T={sim_clk_str}</text>
 
         <!-- 3. TOP BRANCH: 95 kWp Rooftop Solar PV -->
         <g transform="translate(340, 50)">
@@ -522,7 +596,7 @@ with tab_mimic:
     m_kva = k2.empty()
     m_soc = k3.empty()
     m_volt = k4.empty()
-    m_freq = k5.empty()
+    m_clock = k5.empty()
     m_sw1 = k6.empty()
     
     # Annunciator Board
@@ -540,13 +614,13 @@ with tab_mimic:
         m_kva.metric("Active Power", f"{latest['Transformer_kVA']:.1f} kVA", f"{latest['Transformer_Pct']:.1f}% Rated")
         m_soc.metric("2nd-Life BESS SoC", f"{latest['BESS_SoC']:.1f} %", "100 kWh Pack")
         m_volt.metric("Bus Voltage V_LN", f"{latest['Bus_Voltage_V']:.1f} V", "Target 230V")
-        m_freq.metric("Feeder Frequency", f"{latest['Grid_Freq_Hz']:.2f} Hz", "50 Hz Nominal")
+        m_clock.metric("Feeder Dispatch Clock", "24:00:00", f"{latest['Grid_Freq_Hz']:.2f} Hz | 50Hz Grid")
         m_sw1.metric("SW1 Contactor", "CLOSED", "Tier-2 Active", delta_color="normal")
         
         annunciator_slot.markdown(render_annunciators(latest), unsafe_allow_html=True)
         sld_slot.markdown(generate_sld_svg(
             latest['Transformer_Load'], latest['BESS_SoC'], latest['SW1_Status'], 
-            latest['Solar_PV_kW'], latest['Bus_Voltage_V'], latest['Transformer_kVA']
+            latest['Solar_PV_kW'], latest['Bus_Voltage_V'], latest['Transformer_kVA'], latest['Time']
         ), unsafe_allow_html=True)
         banner_slot.success("✅ GRID STABLE: 24-Hour simulation completed with zero statutory voltage violations and zero transformer overloads.")
         
@@ -555,17 +629,23 @@ with tab_mimic:
         for i in range(start_idx, len(df), step_size):
             row = df.iloc[i]
             
+            # Dispatch Clock String
+            sim_hr = int(row['Time'])
+            sim_min = int((row['Time'] % 1) * 60)
+            sim_sec = int(((row['Time'] * 60) % 1) * 60)
+            dispatch_clk = f"{sim_hr:02d}:{sim_min:02d}:{sim_sec:02d}"
+            
             # Metrics
             m_load.metric("Transformer Current", f"{row['Transformer_Load']:.1f} A", "Secondary")
             m_kva.metric("Active Power", f"{row['Transformer_kVA']:.1f} kVA", f"{row['Transformer_Pct']:.1f}% Rated")
             m_soc.metric("2nd-Life BESS SoC", f"{row['BESS_SoC']:.1f} %", "100 kWh")
             m_volt.metric("Bus Voltage V_LN", f"{row['Bus_Voltage_V']:.1f} V", "CEA 207-253V")
-            m_freq.metric("Feeder Frequency", f"{row['Grid_Freq_Hz']:.2f} Hz", "50 Hz")
+            m_clock.metric("Feeder Dispatch Clock", dispatch_clk, f"{row['Grid_Freq_Hz']:.2f} Hz | 50Hz")
             
             if row['SW1_Status'] >= 0.5:
                 m_sw1.metric("SW1 Contactor", "TRIPPED", "Shedding Active", delta_color="inverse")
                 banner_slot.error(
-                    f"⚠️ EMERGENCY LOAD SHEDDING ACTIVE [T={row['Time']:.2f}h]: "
+                    f"⚠️ EMERGENCY LOAD SHEDDING ACTIVE [T={dispatch_clk}]: "
                     f"2nd-Life BESS SoC reached reserve floor ({row['BESS_SoC']:.1f}% <= 20%). "
                     f"Edge Controller tripped Contactor SW1 to shed 50 kW flexible commercial load. Tier-1 lifelines 100% stable."
                 )
@@ -573,19 +653,19 @@ with tab_mimic:
                 m_sw1.metric("SW1 Contactor", "CLOSED", "Tier-2 Normal", delta_color="normal")
                 if row['BESS_SoC'] > 95.0:
                     banner_slot.info(
-                        f"☀️ SOLAR OVERGENERATION CLAMP [T={row['Time']:.2f}h]: "
+                        f"☀️ SOLAR OVERGENERATION CLAMP [T={dispatch_clk}]: "
                         f"Excess rooftop solar ({row['Solar_PV_kW']:.1f} kW) absorbed by 2nd-Life BESS. "
                         f"Reverse power flow and voltage spike clamped strictly below 253V CEA statutory threshold."
                     )
                 elif row['Transformer_Load'] > 60.0 and row['BESS_SoC'] > 22.0:
                     banner_slot.warning(
-                        f"⚡ EVENING PEAK SHAVING DISPATCH [T={row['Time']:.2f}h]: "
+                        f"⚡ EVENING PEAK SHAVING DISPATCH [T={dispatch_clk}]: "
                         f"Transformer current reached {row['Transformer_Load']:.1f} A. "
                         f"BESS 40 kW bi-directional PCS discharging to protect 250 kVA transformer from thermal stress."
                     )
                 else:
                     banner_slot.success(
-                        f"✅ GRID STABLE [T={row['Time']:.2f}h]: "
+                        f"✅ GRID STABLE [T={dispatch_clk}]: "
                         f"Bus Voltage {row['Bus_Voltage_V']:.1f} V within nominal band. "
                         f"Transformer loading: {row['Transformer_Pct']:.1f}% (Safe Headroom)."
                     )
@@ -594,7 +674,7 @@ with tab_mimic:
             annunciator_slot.markdown(render_annunciators(row), unsafe_allow_html=True)
             sld_slot.markdown(generate_sld_svg(
                 row['Transformer_Load'], row['BESS_SoC'], row['SW1_Status'], 
-                row['Solar_PV_kW'], row['Bus_Voltage_V'], row['Transformer_kVA']
+                row['Solar_PV_kW'], row['Bus_Voltage_V'], row['Transformer_kVA'], row['Time']
             ), unsafe_allow_html=True)
             
             time.sleep(playback_speed)
