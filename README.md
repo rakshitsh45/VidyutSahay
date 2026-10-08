@@ -86,7 +86,7 @@ flowchart TD
 | **BESS PCS Rating** | $40.0\text{ kW}$ Bi-directional | Inverter charge/discharge rate cap |
 | **Tier-1 Critical Load** | $25.0\text{ kW}$ (Continuous) | Hospital ICU, vaccines, emergency drinking water |
 | **Tier-2 Flexible Load** | $50.0\text{ kW}$ (Controllable) | Commercial lighting, agricultural water pumps, small shops |
-| **CEA Voltage Band** | $207.0\text{ V} - 253.0\text{ V}$ L-N | Statutory $\pm 10\%$ permissible limits around $230\text{ V}$ |
+| **CEA Voltage Band** | $207.0\text{ V} - 253.0\text{ V}$ L-N | Statutory ±10% permissible limits around 230 V |
 | **Edge Controller Rate** | $50\ \mu\text{s}$ ($20\text{ kHz}$) | Real-time discrete control step for droop injection |
 
 ---
@@ -101,10 +101,10 @@ $$P_{net}(t) = P_{DT}(t) + P_{solar}(t) \pm P_{bess}(t) - P_{load}(t)$$
 During peak solar hours, $P_{net} < 0$ causes voltage swelling above the statutory ceiling ($253\text{ V}$). VidyutSahay commands $P_{bess} < 0$ (charging mode) up to $40\text{ kW}$ to sink surplus power, pinning $V_{bus} \le 251.2\text{ V}$.
 
 ### 2. Transformer Thermal Loading
-Transformer apparent loading percentage $S_{\%}(t)$ is calculated from 3-phase secondary current magnitude:
+Transformer apparent loading percentage $S_{\text{load}}(t)$ is calculated from 3-phase secondary current magnitude:
 $$I_{sec}(t) = \sqrt{\frac{2}{3}\left(I_a^2(t) + I_b^2(t) + I_c^2(t)\right)}$$
-$$S(t) = \sqrt{3} \cdot V_{LL}(t) \cdot I_{sec}(t), \quad S_{\%}(t) = \frac{S(t)}{S_{rated}} \times 100\%$$
-During evening peaks, VidyutSahay injects $+40\text{ kW}$ from BESS, reducing secondary current by $\sim 56\text{ A}$ and maintaining $S_{\%} \le 84.8\%$ (thermal safe headroom).
+$$S(t) = \sqrt{3} \cdot V_{LL}(t) \cdot I_{sec}(t), \quad S_{\text{load}}(t) = \left(\frac{S(t)}{S_{rated}}\right) \times 100$$
+During evening peaks, VidyutSahay injects $+40\text{ kW}$ from BESS, reducing secondary current by $\sim 56\text{ A}$ and maintaining $S_{\text{load}} \le 84.8$% (thermal safe headroom).
 
 ### 3. Battery State of Charge (SoC) Coulomb Accounting
 $$\text{SoC}(t) = \text{SoC}(t_0) - \int_{t_0}^{t} \frac{P_{bess}(\tau) \cdot \eta^{\pm}}{E_{capacity}} \, d\tau$$
@@ -116,7 +116,7 @@ Where:
 ### 4. Autonomous Demand Response Interlock (Contactor SW1)
 To protect 2nd-life battery health against deep discharge degradation, the edge controller enforces an autonomous trip rule:
 $$\text{State}(SW1) = \begin{cases} 
-0 \text{ (TRIP / SHED)}, & \text{if } \text{SoC}(t) \le 20.0\% \ \land \ P_{net}(t) > 0.70 \cdot S_{rated} \\
+0 \text{ (TRIP / SHED)}, & \text{if } \text{SoC}(t) \le 20.0 \text{ and } P_{net}(t) > 0.70 \cdot S_{rated} \\
 1 \text{ (CLOSED / NORMAL)}, & \text{otherwise}
 \end{cases}$$
 
