@@ -1,4 +1,19 @@
+# Python Cache & Virtual Environments
 __pycache__/
-*.pyc
-slprj/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+env/
+ENV/
+
+# MATLAB & Simulink Temporary Files
 *.asv
+slprj/
+*.autosave
+*.bak
+
+# OS Temporary Files
+.DS_Store
+Thumbs.db
